@@ -14,8 +14,9 @@ authors = [{ name = "Your Name" }]
 dependencies = [
     "pre-commit",
     "trimesh",
-    "torch>=2",
-    "torchvision",
+    "torch==1.13.1",
+    "torchvision==0.14.1",
+    "triton",
     "einops",
     "huggingface_hub",
     "imageio",

@@ -8,11 +8,41 @@
 #   https://github.com/facebookresearch/dino/blob/master/vision_transformer.py
 #   https://github.com/rwightman/pytorch-image-models/tree/master/timm/models/vision_transformer.py
 
+import math
 import logging
+import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
 logger = logging.getLogger("dinov2")
+
+
+# Efficient implementation equivalent to the following:
+def scaled_dot_product_attention(
+    query,
+    key,
+    value,
+    attn_mask=None,
+    dropout_p=0.0,
+    scale=None,
+) -> torch.Tensor:
+
+    L, S = query.size(-2), key.size(-2)
+    scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
+    attn_bias = torch.zeros(L, S, dtype=query.dtype, device=query.device)
+
+    if attn_mask is not None:
+        if attn_mask.dtype == torch.bool:
+            attn_bias.masked_fill_(attn_mask.logical_not(), float("-inf"))
+        else:
+            attn_bias = attn_mask + attn_bias
+
+    attn_weight = query @ key.transpose(-2, -1) * scale_factor
+    attn_weight += attn_bias
+    attn_weight = torch.softmax(attn_weight, dim=-1)
+    attn_weight = torch.dropout(attn_weight, dropout_p, train=True)
+    r = attn_weight @ value
+    return r
 
 
 class Attention(nn.Module):
@@ -57,7 +87,7 @@ class Attention(nn.Module):
             q = self.rope(q, pos)
             k = self.rope(k, pos)
         if self.fused_attn:
-            x = F.scaled_dot_product_attention(
+            x = scaled_dot_product_attention(
                 q,
                 k,
                 v,
