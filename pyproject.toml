@@ -31,7 +31,6 @@ dependencies = [
     "pillow",
     "omegaconf",
     "evo",
-    "e3nn",
     "moviepy",
     "plyfile",
     "pillow_heif",
